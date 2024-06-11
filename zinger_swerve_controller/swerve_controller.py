@@ -42,12 +42,12 @@ class SwerveController(Node):
         self.declare_parameter("robot_base_frame", "base_footprint")
         self.declare_parameter("twist_topic", "cmd_vel")
 
-        self.declare_parameter("position_controller_name", "position_controller")
-        self.declare_parameter("velocity_controller_name", "velocity_controller")
+        self.declare_parameter("position_controller_name", "forward_position_controller")
+        self.declare_parameter("velocity_controller_name", "forward_velocity_controller")
         self.declare_parameter("cycle_fequency", 50)
 
-        self.declare_parameter("steering_joints", ["joint1", "joint2"])
-        self.declare_parameter("drive_joints", ["joint1", "joint2"])
+        self.declare_parameter("steering_joints", ["fl_steering_joint", "fr_steering_joint", "rl_steering_joint", "rr_steering_joint"])
+        self.declare_parameter("drive_joints", ["fl_wheel_joint", "fr_wheel_joint", "rl_wheel_joint", "rr_wheel_joint"])
 
         self.get_logger().info(f'Initializing swerve controller ...')
 
@@ -58,6 +58,7 @@ class SwerveController(Node):
         # publish the module steering angle
         position_controller_name = self.get_parameter("position_controller_name").value
         steering_angle_publish_topic = "/" + position_controller_name + "/" + "commands"
+        # print(steering_angle_publish_topic)
         self.drive_module_steering_angle_publisher = self.create_publisher(
             Float64MultiArray,
             steering_angle_publish_topic,
@@ -168,6 +169,9 @@ class SwerveController(Node):
     def cmd_vel_callback(self, msg: Twist):
         if msg == None:
             return
+        
+        # if msg.linear.x == 0 and msg.linear.y == 0 and msg.angular.z == 0:
+
 
         # If this twist message is the same as last time, then we don't need to do anything
         if self.last_velocity_command is not None:
@@ -209,13 +213,13 @@ class SwerveController(Node):
         # Get the drive module information from the URDF and turn it into a list of drive modules.
         #
         # For now we don't read the URDF and just hard-code the drive modules
-        robot_length = 0.35
-        robot_width = 0.30
+        robot_length = 1.315
+        robot_width = 0.924
 
-        steering_radius = 0.05
+        steering_radius = 0.0
 
-        wheel_radius = 0.04
-        wheel_width = 0.05
+        wheel_radius = 0.167
+        wheel_width = 0.094
 
         # store the steering joints
         steering_joint_names = self.get_parameter("steering_joints").value
@@ -236,11 +240,11 @@ class SwerveController(Node):
             )
 
         drive_modules: List[DriveModule] = []
-        drive_module_name = "left_front"
+        drive_module_name = "fl"
         left_front = DriveModule(
             name=drive_module_name,
-            steering_link=next((x for x in steering_joints if drive_module_name in x), "joint_steering_{}".format(drive_module_name)),
-            drive_link=next((x for x in drive_joints if drive_module_name in x), "joint_drive_{}".format(drive_module_name)),
+            steering_link="fl_steering_joint",
+            drive_link=next((x for x in drive_joints if drive_module_name in x), "fl_wheel_joint"),
             steering_axis_xy_position=Point(0.5 * (robot_length - 2 * steering_radius), 0.5 * (robot_width - steering_radius), 0.0),
             wheel_radius=wheel_radius,
             wheel_width=wheel_width,
@@ -260,11 +264,11 @@ class SwerveController(Node):
             f'and position: ["{left_front.steering_axis_xy_position.x}", "{left_front.steering_axis_xy_position.y}"]'
         )
 
-        drive_module_name = "left_rear"
+        drive_module_name = "rl"
         left_rear = DriveModule(
             name=drive_module_name,
-            steering_link=next((x for x in steering_joints if drive_module_name in x), "joint_steering_{}".format(drive_module_name)),
-            drive_link=next((x for x in drive_joints if drive_module_name in x), "joint_drive_{}".format(drive_module_name)),
+            steering_link="lr_steering_joint",
+            drive_link=next((x for x in drive_joints if drive_module_name in x), "lr_wheel_joint"),
             steering_axis_xy_position=Point(-0.5 * (robot_length - 2 * steering_radius), 0.5 * (robot_width - steering_radius), 0.0),
             wheel_radius=wheel_radius,
             wheel_width=wheel_width,
@@ -284,11 +288,11 @@ class SwerveController(Node):
             f'and position: ["{left_rear.steering_axis_xy_position.x}", "{left_rear.steering_axis_xy_position.y}"]'
         )
 
-        drive_module_name = "right_rear"
+        drive_module_name = "rr"
         right_rear = DriveModule(
             name=drive_module_name,
-            steering_link=next((x for x in steering_joints if drive_module_name in x), "joint_steering_{}".format(drive_module_name)),
-            drive_link=next((x for x in drive_joints if drive_module_name in x), "joint_drive_{}".format(drive_module_name)),
+            steering_link="rr_steering_joint",
+            drive_link=next((x for x in drive_joints if drive_module_name in x), "rr_wheel_joint"),
             steering_axis_xy_position=Point(-0.5 * (robot_length - 2 * steering_radius), -0.5 * (robot_width - steering_radius), 0.0),
             wheel_radius=wheel_radius,
             wheel_width=wheel_width,
@@ -308,11 +312,11 @@ class SwerveController(Node):
             f'and position: ["{right_rear.steering_axis_xy_position.x}", "{right_rear.steering_axis_xy_position.y}"]'
         )
 
-        drive_module_name = "right_front"
+        drive_module_name = "fr"
         right_front = DriveModule(
             name=drive_module_name,
-            steering_link=next((x for x in steering_joints if drive_module_name in x), "joint_steering_{}".format(drive_module_name)),
-            drive_link=next((x for x in drive_joints if drive_module_name in x), "joint_drive_{}".format(drive_module_name)),
+            steering_link="fr_steering_joint",
+            drive_link=next((x for x in drive_joints if drive_module_name in x), "fr_wheel_joint"),
             steering_axis_xy_position=Point(0.5 * (robot_length - 2 * steering_radius), -0.5 * (robot_width - steering_radius), 0.0),
             wheel_radius=wheel_radius,
             wheel_width=wheel_width,
@@ -331,7 +335,8 @@ class SwerveController(Node):
             f'and drive link: "{right_front.driving_link_name}" ' +
             f'and position: ["{right_front.steering_axis_xy_position.x}", "{right_front.steering_axis_xy_position.y}"]'
         )
-
+        drive_modules = [left_front, right_front, left_rear, right_rear]
+        print(len(drive_modules))
         return drive_modules
 
     def get_motion_profile(self, start: float, end: float) -> TransientVariableProfile:
@@ -524,6 +529,11 @@ class SwerveController(Node):
 
         position_msg = Float64MultiArray()
         steering_angle_values = [a.steering_angle_in_radians for a in drive_module_states]
+
+        for a in (steering_angle_values):
+            if a == float('infinity'):
+                a = 0
+
         position_msg.data = steering_angle_values
 
         # Note that the controller gives the velocity in meters per second, i.e. the velocity of the wheel at the
@@ -532,6 +542,8 @@ class SwerveController(Node):
         for a in drive_module_states:
             linear_velocity = a.drive_velocity_in_meters_per_second
             wheel_radius = next((x.wheel_radius for x in self.drive_modules if x.name == a.name), 1.0)
+            if linear_velocity == float('infinity'):
+                linear_velocity = 0
             drive_velocity_values.append(linear_velocity / wheel_radius)
 
         velocity_msg = Float64MultiArray()

@@ -20,7 +20,7 @@ from launch.substitutions.launch_configuration import LaunchConfiguration
 ARGUMENTS = [
     DeclareLaunchArgument(
         'use_sim_time',
-        default_value='false',
+        default_value='true',
         choices=['true', 'false'],
         description='use_sim_time'
     ),
@@ -30,9 +30,10 @@ def generate_launch_description():
 
     config = PathJoinSubstitution(
         [
-            FindPackageShare("zinger_swerve_controller"),
-            "config",
-            "swerve.yaml",
+            FindPackageShare("kribl_4ws"),
+            "description",
+            "urdf",
+            "controllers.yaml",
         ]
     )
 
@@ -43,7 +44,7 @@ def generate_launch_description():
                 executable="swerve_controller",
                 name="swerve_controller",
                 parameters=[
-                    {'use_sim_time': LaunchConfiguration('use_sim_time')},
+                    # {'use_sim_time': True},
                     config
                 ],
                 output="both",
